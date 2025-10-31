@@ -1,119 +1,181 @@
 import Product from "../models/productModel.js";
 
-//add-product
+// ADD PRODUCT
 export const addProduct = async (req, res) => {
-  console.log("Inside createProduct controller..");
+  console.log("Inside addProduct controller...");
   try {
-    const { productCode, name, price, available_country, tax_rate, color, size, stock, category,
-      offer, description, brand, ratings } = req.body
-    const productImages = req.files ? req.files.map(file => file.path) : []
-    if (!productCode || !name || !price || !available_country || !tax_rate || !color || !size || !stock || !category ||
-      !offer || !description || !brand || !ratings || !productImages) {
-      res.status(400).json({ error: "All fields are required.." })
+    const {
+      productCode,
+      name,
+      price,
+      available_country,
+      tax_rate,
+      color,
+      size,
+      stock,
+      category,
+      offer,
+      description,
+      brand,
+      ratings,
+    } = req.body;
+
+    const productImages = req.files ? req.files.map((file) => file.path) : [];
+
+    if (
+      !productCode ||
+      !name ||
+      !price ||
+      !available_country ||
+      !tax_rate ||
+      !color ||
+      !size ||
+      !stock ||
+      !category ||
+      !offer ||
+      !description ||
+      !brand ||
+      !ratings
+    ) {
+      return res.status(400).json({ error: "All fields are required." });
     }
-    const existingProduct = await Product.findOne({ productCode })
-    if (existingProduct) {
-      res.status(401).json({ message: "Productcode alredy exist😴, try with another one" })
+
+    const existing = await Product.findOne({ productCode });
+    if (existing) {
+      return res.status(409).json({ error: "Product code already exists." });
     }
+
     const newProduct = new Product({
-      productCode, name, price, available_country, tax_rate, color, size, stock, category,
-      offer, description, brand, ratings, productImages
+      productCode,
+      name,
+      price,
+      available_country,
+      tax_rate,
+      color,
+      size,
+      stock,
+      category,
+      offer,
+      description,
+      brand,
+      ratings,
+      productImages,
+    });
 
-    })
-    await newProduct.save()
-    res.status(200).json({ message: "Product added successfully..", newProduct })
+    await newProduct.save();
+    res.status(201).json({ message: "Product added successfully", newProduct });
   } catch (err) {
     console.log(err);
-    res.status(500).json({ message: "Failed to add product" });
-
+    res.status(500).json({ error: "Server error" });
   }
+};
 
-}
-//getAll-Products
+// GET ALL
 export const getAllProducts = async (req, res) => {
-  console.log("Inside getAllProducts controller");
   try {
-    const allProductsList = await Product.find({})
-    if (allProductsList) {
-      return res.status(200).json({ message: "List of all products", allProductsList })
-    } else {
-      return res.status(400).json({ message: "No products found" })
-    }
+    const allProductsList = await Product.find({});
+    res.status(200).json({ allProductsList });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err })
+    res.status(500).json({ error: err.message });
   }
+};
 
-}
-//getSingleProduct 
-export const getSingleProduct = async (req, res) => {
-  console.log("Inside getSingleProduct controller..");
-  try {
-    const productId = req.params.id
-    const singleProduct = await Product.findById(productId)
-    if (!singleProduct) {
-      return res.status(404).json({ error: "No product found" });
-    }
-    res.status(200).json({ singleProduct });
-  } catch (err) {
-    console.log(err)
-    res.status(500).json({ error: err.message })
-  }
-
-}
-//editSinglePrdt
+// EDIT PRODUCT
 export const editSinglePrdt = async (req, res) => {
-  console.log("Inside editSinglePrdt");
   try {
-    const productId = req.params.id
+    const productId = req.params.id;
+    const existing = await Product.findById(productId);
+    if (!existing) return res.status(404).json({ error: "Product not found" });
 
-    const { name, price, available_country, tax_rate, color, size, stock, category,
-      offer, description, brand, ratings } = req.body
-    const productImages = req.files ? req.files.map(file => file.path) : []
-     const existingProduct = await Product.findById(productId);
-    if (!existingProduct) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-    const updatedData={
-      name: name || existingProduct.name,
-      price: price || existingProduct.price,
-      available_country: available_country || existingProduct.available_country,
-      tax_rate: tax_rate || existingProduct.tax_rate,
-      color: color || existingProduct.color,
-      size: size || existingProduct.size,
-      stock: stock || existingProduct.stock,
-      category: category || existingProduct.category,
-      offer: offer || existingProduct.offer,
-      description: description || existingProduct.description,
-      brand: brand || existingProduct.brand,
-      ratings: ratings || existingProduct.ratings,
-    }
-    if(productImages.length>0){
-      updatedData.productImages = productImages
-    }
+    const {
+      name,
+      price,
+      available_country,
+      tax_rate,
+      color,
+      size,
+      stock,
+      category,
+      offer,
+      description,
+      brand,
+      ratings,
+    } = req.body;
 
-    const updatedProduct = await Product.findByIdAndUpdate(productId,{$set:updatedData},{new:true})
-    res.status(200).json({message:"Product added successfully..!",updatedProduct})
+    const productImages = req.files?.length
+      ? req.files.map((file) => file.path)
+      : existing.productImages;
+
+    const updated = await Product.findByIdAndUpdate(
+      productId,
+      {
+        name,
+        price,
+        available_country,
+        tax_rate,
+        color,
+        size,
+        stock,
+        category,
+        offer,
+        description,
+        brand,
+        ratings,
+        productImages,
+      },
+      { new: true }
+    );
+
+    res.status(200).json({ message: "Product updated successfully", updated });
   } catch (err) {
-    console.log(err)
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
+};
 
-}
-//deletePrdt
-export const removeSingleProduct = async(req,res)=>{
-  console.log("Inside removeSingleProduct controller..");
-  try{
-    const productId = req.params.id
-    const existingProduct = await Product.findById(productId)
-    if(!existingProduct){
-      res.status(400).json({error:"Product not found.."})
-    }
-    await Product.findByIdAndDelete(productId)
-    res.status(200).json({message:"Product deleted successfully.."})
-  }catch(err){
-    console.log(err);
-    res.status(500).json({error:err.message})
+// DELETE PRODUCT
+export const removeSingleProduct = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: "Not found" });
+
+    await Product.findByIdAndDelete(productId);
+    res.status(200).json({ message: "Product deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  
-}
+};
+
+// ✅ Get Single Product (for user view)
+export const getSingleProductByUser = async (req, res) => {
+  console.log("Inside getSingleProductByUser controller...");
+  try {
+    const { id } = req.params;
+
+    // Check if ID is provided
+    if (!id) {
+      return res.status(400).json({ message: "Product ID is required" });
+    }
+
+    // Find product by ID
+    const singleProduct = await Product.findById(id);
+
+    // If product not found
+    if (!singleProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // ✅ Send back single product details
+    return res.status(200).json({
+      message: "Product fetched successfully",
+      singleProduct,
+    });
+
+  } catch (err) {
+    console.error("Error fetching product details:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+

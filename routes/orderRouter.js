@@ -1,20 +1,22 @@
 import express from "express";
+import {createOrderFromCart,getUserOrders,cancelOrderByUser,getAllOrdersForAdmin,getOrderDetails, getOrderByIdForAdmin, updateOrderStatus} from "../controllers/orderController.js";
 import { isAuthenticated } from "../middlewares/userMiddleware.js";
 import { isAdmin } from "../middlewares/adminMidlleware.js";
-import { deleteOrder, getAllOrders, getMyOrders, updateOrder } from "../controllers/orderController.js";
 
-const router = express.Router()
-
-//getOrders
-router.get("/",isAuthenticated,getMyOrders)
-//getAllOrderDetails
-router.get("/allOrders",isAuthenticated,isAdmin,getAllOrders)
-//updateOrdere-User
-router.put("/updateOrderbyUser/:id", isAuthenticated, updateOrder);
-//updateOrder
-router.put("/updateOrder/:id", isAuthenticated, isAdmin, updateOrder);
-//deleteOrder
-router.delete("/deleteOrder/:id", isAuthenticated, isAdmin, deleteOrder);
+const router = express.Router();
 
 
-export default router
+router.post("/create", isAuthenticated, createOrderFromCart);
+router.get("/my-orders", isAuthenticated, getUserOrders);
+router.put("/cancel/:orderId", isAuthenticated, cancelOrderByUser);
+router.get("/details/:orderId", isAuthenticated, getOrderDetails);
+
+// ✅ Get all orders (Admin)
+router.get("/admin/all", isAuthenticated,isAdmin, getAllOrdersForAdmin);
+
+// ✅ Get single order by ID (Admin)
+router.get("/admin/:id", isAuthenticated,isAdmin, getOrderByIdForAdmin);
+
+// ✅ Update order status (Admin)
+router.put("/admin/:id/status", isAuthenticated,isAdmin, updateOrderStatus);
+export default router;

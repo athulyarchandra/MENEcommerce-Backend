@@ -1,96 +1,190 @@
 import Orders from "../models/orderModel.js";
+import Cart from "../models/cartModel.js";
+import Product from "../models/productModel.js";
 
-//getOrders-user
-export const getMyOrders = async (req, res) => {
+export const createOrderFromCart = async (req, res) => {
   try {
-    const orders = await Orders.find({ userId: req.user.id })
-      .populate("items.productId", "name price brand grandTotal paymentMethod")
-      .sort({ createdAt: -1 });
+    const userId = req.session?.user;
+    if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
-    res.status(200).json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-//getAllOrders-Admin
-export const getAllOrders = async (req, res) => {
-  try {
-    const orders = await Orders.find()
-      .populate("userId", "username email")
-      .populate("items.productId", "name price brand")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, orders });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-// userUpdates shipping details before shipment
-export const updateShippingAddress = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { shippingAddress } = req.body;
-
-    const order = await Orders.findOne({ _id: id, userId: req.user.id });
-
-    if (!order) return res.status(404).json({ error: "Order not found" });
-    if (order.status !== "Pending")
-      return res.status(400).json({ error: "Cannot update shipped or delivered order" });
-
-    order.shippingAddress = shippingAddress;
-    await order.save();
-
-    res.status(200).json({ message: "Address updated successfully", order });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// updateOrder (Admin only)
-export const updateOrder = async (req, res) => {
-        console.log("Inside updateOrder controller");
-            console.log("Update Order called");
-    console.log("Order ID:", req.params.id);
-    console.log("Body:", req.body);
-  try {
-    const { id } = req.params; 
-    const updates = req.body; 
-
-    const updatedOrder = await Orders.findByIdAndUpdate(id, updates, {
-      new: true, 
-      runValidators: true,
-    }).populate("userId", "name email"); 
-    if (!updatedOrder) {
-      return res.status(404).json({ error: "Order not found" });
+    const cart = await Cart.findOne({ userId });
+    if (!cart || !cart.items.length) {
+      return res.status(400).json({ message: "Cart is empty" });
     }
 
-    res.status(200).json({
-      message: "Order updated successfully",
-      order: updatedOrder,
+    // Validate stock
+    for (const item of cart.items) {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        return res.status(404).json({ message: `Product ${item.name} not found` });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          message: `Only ${product.stock} items left for ${product.name}`
+        });
+      }
+    }
+
+    // Build order from cart
+    const newOrder = new Orders({
+      userId,
+      items: cart.items.map(i => ({
+        productId: i.productId,
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity,
+        color: i.color,
+        size: i.size,
+        brand: i.brand,
+        offer: i.offer,
+        subtotal: i.subtotal
+      })),
+      grandTotal: cart.grandTotal,
+      shippingAddress: req.body.shippingAddress || "Default Shipping Address",
+      paymentMethod: req.body.paymentMethod || "Cash on Delivery",
+      status: "Pending",
+      userDeleted: false
     });
+
+    await newOrder.save();
+
+    // Decrease product stock
+    for (const item of cart.items) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        product.stock = Math.max(0, (product.stock || 0) - (item.quantity || 0));
+        await product.save();
+      }
+    }
+
+    // Clear cart
+    cart.items = [];
+    cart.grandTotal = 0;
+    cart.isCheckedOut = true;
+    await cart.save();
+
+    return res.status(201).json({ success: true, message: "Order placed", order: newOrder });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("createOrderFromCart error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
-// deleteOrder (Admin or User)
-export const deleteOrder = async (req, res) => {
+
+export const getUserOrders = async (req, res) => {
   try {
-    console.log("Inside deleteOrder controller...");
-    console.log("Order ID:", req.params.id);
+    const userId = req.session?.user;
+    if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
-    const order = await Orders.findByIdAndDelete(req.params.id);
+    const orders = await Orders.find({ userId, userDeleted: { $ne: true } }).sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, orders });
+  } catch (err) {
+    console.error("getUserOrders error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
 
+// Cancel order by user (soft-delete from user's view) if still Pending
+export const cancelOrderByUser = async (req, res) => {
+  try {
+    const userId = req.session?.user;
+    if (!userId) return res.status(401).json({ message: "Not authenticated" });
+
+    const { orderId } = req.params;
+    const order = await Orders.findOne({ _id: orderId, userId });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    if (order.status !== "Pending") {
+      return res.status(400).json({ message: "Order cannot be cancelled at this stage" });
+    }
+
+    // Mark cancelled and hide from user (soft delete)
+    order.status = "Cancelled";
+    order.userDeleted = true;
+    await order.save();
+
+    // Restock products
+    for (const item of order.items) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        product.stock = (product.stock || 0) + (item.quantity || 0);
+        await product.save();
+      }
+    }
+
+    return res.status(200).json({ success: true, message: "Order cancelled & hidden from your view", order });
+  } catch (err) {
+    console.error("cancelOrderByUser error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+//getOrderDetails
+export const getOrderDetails = async (req, res) => {
+  try {
+    const userId = req.session?.user;
+    if (!userId) return res.status(401).json({ message: "Not authenticated" });
+
+    const { orderId } = req.params;
+
+    const order = await Orders.findOne({
+      _id: orderId,
+      userId,
+      userDeleted: { $ne: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    return res.status(200).json({ success: true, order });
+
+  } catch (err) {
+    console.error("getOrderDetails error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ Get all orders for admin
+export const getAllOrdersForAdmin = async (req, res) => {
+  try {
+    const orders = await Orders.find().sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, orders });
+  } catch (err) {
+    console.error("getAllOrdersForAdmin error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ Get a single order by ID (admin)
+export const getOrderByIdForAdmin = async (req, res) => {
+  try {
+    const order = await Orders.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+    return res.status(200).json({ success: true, order });
+  } catch (err) {
+    console.error("getOrderByIdForAdmin error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ Update order status (admin only)
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Orders.findById(id);
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    res.status(200).json({
-      message: "Order deleted successfully!",
-      deletedOrder: order,
-    });
+    order.status = status;
+    await order.save();
+
+    return res.status(200).json({ message: "Order status updated", order });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error("updateOrderStatus error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
-
