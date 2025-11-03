@@ -10,6 +10,8 @@ const router = express.Router();
 router.post("/add", isAuthenticated, isAdmin, addCategory);
 //getAllCategory
 router.get("/all", isAuthenticated, isAdmin, getAllCategories);
+//getAllCategoryPublic
+router.get("/public/all", getAllCategories);
 //getSingleCAtegory
 router.get("/single/:id", isAuthenticated, isAdmin, getSingleCategory);
 //updateSingleCategory

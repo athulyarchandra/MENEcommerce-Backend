@@ -21,17 +21,17 @@ const userSchema = new mongoose.Schema({
         type: String
         , default: ""
     }
-    ,  // default empty string
+    ,
     bio: {
         type: String
         , default: ""
     }
-    ,         // default empty string
+    ,
     age: {
         type: Number
         , default: null
     }
-    ,       // default null
+    ,
     gender: {
         type: String
         , enum: ["Male"
@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema({
         type: String
         , default: ""
     }
-    ,     // default empty string
+    ,
     role: {
         type: String
         , enum: ["user"
@@ -56,7 +56,12 @@ const userSchema = new mongoose.Schema({
     createdAt: {
         type: Date
         , default: Date.now
-    }
+    },
+    status: {
+        type: String,
+        enum: ["Active", "Inactive"],
+        default: "Active",
+    },
 });
 
 

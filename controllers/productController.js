@@ -146,26 +146,22 @@ export const removeSingleProduct = async (req, res) => {
   }
 };
 
-// ✅ Get Single Product (for user view)
+// GetSingleProduct
 export const getSingleProductByUser = async (req, res) => {
   console.log("Inside getSingleProductByUser controller...");
   try {
     const { id } = req.params;
 
-    // Check if ID is provided
     if (!id) {
       return res.status(400).json({ message: "Product ID is required" });
     }
 
-    // Find product by ID
     const singleProduct = await Product.findById(id);
 
-    // If product not found
     if (!singleProduct) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // ✅ Send back single product details
     return res.status(200).json({
       message: "Product fetched successfully",
       singleProduct,

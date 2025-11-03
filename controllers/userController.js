@@ -1,4 +1,3 @@
-import { isAdmin } from "../middlewares/adminMidlleware.js";
 import users from "../models/userModel.js";
 import bcrypt from 'bcrypt'
 
@@ -63,7 +62,9 @@ export const loginUser = async (req, res) => {
       message: "User logged in successfully..", user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        status:user.status,
+        role:user.role
       }
     });
 
@@ -85,7 +86,6 @@ export const getUserProfile = async (req, res) => {
     const userId = req.session.user;
 
     const existingUser = await users.findById(userId).select("-password");
-    // Remove password for security
 
     if (!existingUser) {
       return res.status(404).json({ error: "User not found" });
@@ -153,4 +153,35 @@ export const updateUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// Update user status (Active/Inactive)
+export const updateUserStatus = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { status } = req.body;
+
+    if (!["Active", "Inactive"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `User status updated to ${status}`,
+      user,
+    });
+  } catch (error) {
+    console.error("Error updating user status:", error);
+    res.status(500).json({ error: "Server error while updating user status" });}
+};
+
+
 

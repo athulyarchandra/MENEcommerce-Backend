@@ -68,11 +68,11 @@ export const getCart = async (req, res) => {
   }
 };
 
-//  Update Item Quantity (Update)
+
 export const updateCartItem = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { action } = req.body; // "inc" or "dec"
+    const { action } = req.body; 
     
     const userId = req.user?.id || req.session?.user;
     if (!userId) {

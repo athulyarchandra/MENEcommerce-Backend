@@ -48,7 +48,7 @@ export const createOrderFromCart = async (req, res) => {
 
     await newOrder.save();
 
-    // Decrease product stock
+    // DecreaseProduct stock
     for (const item of cart.items) {
       const product = await Product.findById(item.productId);
       if (product) {
@@ -83,7 +83,7 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-// Cancel order by user (soft-delete from user's view) if still Pending
+// Cancel 
 export const cancelOrderByUser = async (req, res) => {
   try {
     const userId = req.session?.user;
@@ -97,12 +97,10 @@ export const cancelOrderByUser = async (req, res) => {
       return res.status(400).json({ message: "Order cannot be cancelled at this stage" });
     }
 
-    // Mark cancelled and hide from user (soft delete)
     order.status = "Cancelled";
     order.userDeleted = true;
     await order.save();
 
-    // Restock products
     for (const item of order.items) {
       const product = await Product.findById(item.productId);
       if (product) {
@@ -143,7 +141,7 @@ export const getOrderDetails = async (req, res) => {
   }
 };
 
-// ✅ Get all orders for admin
+// GetAllOrders for admin
 export const getAllOrdersForAdmin = async (req, res) => {
   try {
     const orders = await Orders.find().sort({ createdAt: -1 });
@@ -154,7 +152,7 @@ export const getAllOrdersForAdmin = async (req, res) => {
   }
 };
 
-// ✅ Get a single order by ID (admin)
+// GetSingleOrder 
 export const getOrderByIdForAdmin = async (req, res) => {
   try {
     const order = await Orders.findById(req.params.id);
@@ -168,7 +166,7 @@ export const getOrderByIdForAdmin = async (req, res) => {
   }
 };
 
-// ✅ Update order status (admin only)
+// Update order status (admin only)
 export const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
