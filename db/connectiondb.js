@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
+import dotenv from 'dotenv';
+dotenv.config({ silent: true })
+const connectionString = process.env.DBCONNECTIONSTRING
 
-export const connectDb = async () => {
-    try {
-        await mongoose.connect("mongodb://127.0.0.1:27017/enProject")
-        console.log("Mongodb connected successfullyy..");
-        
-    }catch(err){
-        console.log("Mongodb connection successfull..",err.message);
-        
-    }
-}
+mongoose.connect(connectionString).then(res=>{
+ console.log("MongoDB Atlas connected successfully");    
+}).catch(err=>{
+     console.log("MongoDB connecton failed");
+    console.log(err);
+})

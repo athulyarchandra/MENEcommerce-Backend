@@ -1,5 +1,6 @@
+import dotenv from 'dotenv'
+dotenv.config({ silent: true })
 import express from 'express'
-import { connectDb } from './db/connectiondb.js'
 import session from 'express-session'
 import userRouter from './routes/userRouter.js'
 import adminRouter from './routes/adminRouter.js'
@@ -8,8 +9,8 @@ import categoryRouter from './routes/categoryRouter.js'
 import cartRouter from './routes/cartRouter.js'
 import orderRouter from './routes/orderRouter.js'
 import cors from 'cors'
-// import reviewRouter from './routes/reviewRouter.js'
 import MongoStore from 'connect-mongo'
+import './db/connectiondb.js'
 
 
 const app = express()
@@ -18,15 +19,13 @@ app.use(cors({
     origin: "http://localhost:5173",
     credentials: true}))
 app.use("/uploads", express.static("uploads"))
-connectDb()
-
 app.use(
     session({
         secret: "strongSecretKey",
         resave: false,
         saveUninitialized: false,
         store: MongoStore.create({
-            mongoUrl: "mongodb://127.0.0.1:27017/enProject",
+            mongoUrl: process.env.DBCONNECTIONSTRING,
             collectionName: "session"
         })
     })
