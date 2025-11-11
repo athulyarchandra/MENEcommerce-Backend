@@ -1,58 +1,60 @@
-import dotenv from 'dotenv'
-dotenv.config({ silent: true })
-import express from 'express'
-import session from 'express-session'
-import userRouter from './routes/userRouter.js'
-import adminRouter from './routes/adminRouter.js'
-import productRouter from './routes/productRouter.js'
-import categoryRouter from './routes/categoryRouter.js'
-import cartRouter from './routes/cartRouter.js'
-import orderRouter from './routes/orderRouter.js'
-import cors from 'cors'
-import MongoStore from 'connect-mongo'
-import './db/connectiondb.js'
+import dotenv from "dotenv";
+dotenv.config();
 
+import express from "express";
+import session from "express-session";
+import cors from "cors";
+import MongoStore from "connect-mongo";
 
-const app = express()
-app.use(express.json())
-app.use(cors({
-    origin: "http://localhost:5173",
-    credentials: true}))
-app.use("/uploads", express.static("uploads"))
+import userRouter from "./routes/userRouter.js";
+import adminRouter from "./routes/adminRouter.js";
+import productRouter from "./routes/productRouter.js";
+import categoryRouter from "./routes/categoryRouter.js";
+import cartRouter from "./routes/cartRouter.js";
+import orderRouter from "./routes/orderRouter.js";
+
+import "./db/connectiondb.js";
+
+const app = express();
+
+app.use(express.json());
 app.use(
-    session({
-        secret: "strongSecretKey",
-        resave: false,
-        saveUninitialized: false,
-        store: MongoStore.create({
-            mongoUrl: process.env.DBCONNECTIONSTRING,
-            collectionName: "session"
-        })
-    })
-)
+  cors({
+    origin: [
+      "http://localhost:5173", 
+      "http://51.20.119.116", 
+    ],
+    credentials: true,
+  })
+);
 
+app.use("/uploads", express.static("uploads"));
 
-app.use('/admin', adminRouter)
-app.use("/user", userRouter)
-app.use("/adminOnly", productRouter)
-app.use("/admin/category", categoryRouter)
-app.use("/user/cart", cartRouter)
-app.use("/orders", orderRouter)
+app.use(
+  session({
+    secret: "strongSecretKey",
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.DBCONNECTIONSTRING,
+      collectionName: "session",
+    }),
+  })
+);
 
-// app.use("/review", reviewRouter)
-
+app.use("/admin", adminRouter);
+app.use("/user", userRouter);
+app.use("/adminOnly", productRouter);
+app.use("/admin/category", categoryRouter);
+app.use("/user/cart", cartRouter);
+app.use("/orders", orderRouter);
+// app.use("/review", reviewRouter);
 
 app.get("/", (req, res) => {
-    res.send("Server created successfully");
+  res.send("✅ Server is running successfully!");
 });
 
-
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-    console.log(`Server started running at port http://localhost:${PORT}`);
-
-})
-
-
-
-
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server started running at http://0.0.0.0:${PORT}`);
+});
