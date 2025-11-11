@@ -153,34 +153,32 @@ export const updateUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// Update user status (Active/Inactive)
+// controllers/adminController.js
 export const updateUserStatus = async (req, res) => {
   try {
-    const userId = req.params.id;
+    const { id } = req.params;
     const { status } = req.body;
 
-    if (!["Active", "Inactive"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status value" });
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { status },
-      { new: true }
-    );
-
+    const user = await users.findById(id);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
+
+    user.status = status;
+    await user.save();
 
     res.status(200).json({
-      success: true,
       message: `User status updated to ${status}`,
       user,
     });
   } catch (error) {
-    console.error("Error updating user status:", error);
-    res.status(500).json({ error: "Server error while updating user status" });}
+    console.error("Error in updateUserStatus:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
 };
 
 
